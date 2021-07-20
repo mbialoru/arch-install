@@ -1,6 +1,9 @@
 # Features
 EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipeline, Wayland.
 
+# Warning
+Before proceeding, read the whole thing just to be sure that you caught any problems that might prop-up durring instalation
+
 # General scheme
  0. Grab a copy of iso and boot from it
  1. Load keymap (if needed)
@@ -11,17 +14,19 @@ EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipeline, Wayland.
  6. Instal base packages with `pacstrap` to /mnt
  7. Generate FSTAB (File Systems TABle)
  8. Chroot in with `arch-chroot /mnt`
- 9. Clone instalation scripts from https://gitlab.sudobash.pl/pub/arch-install
+ 9. Clone instalation scripts from my repository
 10. Edit to your liking, make executable and run.
 11. Apply additional tweaks, reboot
 12. Finish instalation
+
+> Repositories: `https://github.com/mbialoru/arch-install` or `https://gitlab.sudobash.pl/Saligia/arch-toolbox` (this one requires password)
 
 # Caveats
 * On VMs, when SSH'ed in and trying to restore to a previous snapshot which was taken after `arch-chroot` - there will be a problem with an existing leftover session of arch-chroot.
 * On VMs, make sure that your VM is running on UEFI(EFI) booting (it's usually available in settings, look for `OVMF`)
 * Keep in mind that wayland doesn't play very nicely with nvidia just yet, installing this system with DE like KDE might lead to some weird graphical glithes and other issues.
 * BTRFS is officially under developement. Hovewer with Fedora34 released it became a default filesystem for that distro.
-* With VMs and maybe even some bare metal configurations, GRUB might not work correctly. To fix this, try following attached commented-out commands in section about GRUB
+* With VMs and maybe even some bare metal configurations, GRUB might not work correctly. To fix this, try following attached commented-out commands in section about installing GRUB
 
 # Installation procedure
 ## Before you start
@@ -59,7 +64,7 @@ EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipeline, Wayland.
 	3. SWAP (code 8200) - System RAM size + .5G should be good
 	4. BTRFS - rest of the disk (remember about ssd over-provisioning)
 
-> GRUB partition is optional, if ommiting it, adjust the EFI size to 600M and mount it directly to /boot/efi
+> GRUB partition is optional, if ommiting it, adjust the EFI size to 600M and mount it directly to /boot
 
 * Write changes to disks and check if it's okay  
 	`lsblk`
@@ -74,7 +79,7 @@ EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipeline, Wayland.
 	3. `mkswap /dev/sdX3` 	 			  Create swap
 	4. `mkfs.btrfs /dev/mapper/luksloop` Format root partition to BTRFS
 
-> You might want to set labels for new partitions with `e2label`
+> You might want to set labels for new partitions
 
 * Mount the encrypted root file system  
 	`mount -o noatime,compress=lzo,discard,ssd,defaults,space_cache /dev/mapper/luksloop /mnt`
@@ -146,7 +151,7 @@ In `/etc/mkinitcpio.conf` within `HOOKS` section add `encrypt` between `filesyst
 ```bash
 sed -i 's/HOOKS=(base\ udev\ autodetect\ modconf\ block\ filesystems\ keyboard\ fsck)/HOOKS="base\ udev\ autodetect\ modconf\ block\ encrypt\ filesystems\ keyboard\ fsck"/' /etc/mkinitcpio.conf
 ```
-If you use Nvidia/AMD/Intel graphics card you might want to add `nvidia` `amdgpu` or `i915` in `MODULES` section
+If you use Nvidia/AMD/Intel graphics card you might want to add `nvidia` `amdgpu` or `i915` (or `nouveau` in case of FOSS driver) in `MODULES` section
 
 Also since we are using BTRFS, in `MODULES` you should add `btrfs` and in `BINARIES` `/usr/bin/btrfs`
 
