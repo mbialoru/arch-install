@@ -8,9 +8,6 @@ sudo journalctl -p 3 -xb
 # Update
 sudo pacman -Syu
 
-# Yay Update
-yay
-
 #Delete Pacman Cache
 sudo pacman -Scc
 

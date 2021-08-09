@@ -11,7 +11,7 @@ problems which might prop-up durring instalation!
 # General scheme
  0. Grab a copy of latest iso, burn it and boot from it
  1. Load keymap (if needed)
- 2. Refresh servers with `pacman -Syy`
+ 2. Refresh servers with `pacman -Syyy`
  3. Partition disks
  4. Format partitions
  5. Mount partitions
@@ -35,14 +35,17 @@ session of arch-chroot.
 available in settings, look for `OVMF`)
 * BTRFS is officially under developement. Hovewer with Fedora34 released, it
 became a default filesystem for that distro.
-
-RAID on BTRFS with levels 5 and 6 is fatally flawed, the arch-wiki states
+* RAID on BTRFS with levels 5 and 6 is fatally flawed, the arch-wiki states
 as of August 2021. Multi-device setups are possible, albeit a bit tricky. RAID
 levels supported are 0, 1, 10, 5 and 6
-
 * With VMs and maybe even some bare metal configurations, GRUB might not work
 correctly. To fix this, try following attached commented-out commands in section
 about installing GRUB
+* While trying to manually put drives on standby with `hdparm` you notice them
+spinning up immidiately after spinning down, check if they aren't freshly 
+formatted EXT4 drives - if they are, and are mounted, chances are that the
+background task of ext4lazyinit is working and the drive will eventually be put
+to standby after that task completes.
 
 # Instalation
 ## Before you start
@@ -106,7 +109,7 @@ I case of this particular instalation additional partitions will be on separate
 drives. WD Blue 2TB will house DATA_A and DATA_B both of type EXT4, Seagate 1TB
 will house BACKUPS and IMAGES both of type EXT4. Samsung 870 QVO 1TB will house
 FAST_A, FAST_B and FAST_BACKUPS subvolumes of BTRFS type
-.
+
 ### Swap size
 There is a heated debate over 'how big my swap should be?' truth to be told,
 it's completely up to you. Different concepts are supported by their 
@@ -257,12 +260,66 @@ successful. However if not, you might want to check with your UEFI(EFI)
 configuration or take a look at the `Caveats` section
 
 # Post-Install
-After successful instalation, you might want to back up the disk with clonezilla (included on the arch linux iso) or `dd` or some other backup method just in case something goes wrong (or make a snapshot if it's a virtual machine) Now onto the last few remaining steps.
+After successful instalation, you might want to back up the disk with
+clonezilla (included on the arch linux iso) or `dd` or some other backup method
+just in case something goes wrong (or make a snapshot if it's a virtual
+machine) Now onto the last few remaining steps.
 
 ## Install Snapper
 * Install package `snapper`, `snap-pac` and `snap-pac-grub` (aur)
 * Create `root` config with `snapper -c root create-config /`
+* Unmount and delete currently exisiting `/.snapshots`
+    `umount /.snapshots ; rmdir /.snapshots`
+* Recreate `/.snapshots` directory `mkdir /.snapshots`
+* Give correct permissions `chmod 750 /.snapshots`
+* Create temporary directory `mkdir /mnt/btrfs`
+* Mount rootfs subvolume `mount /dev/mapper/luksloop /mnt/btrfs`
+* Mount @snapshots subvolume to `/.snapshots`
+    * Check subvolume ID `btrfs subvolume list /`
+    * Edit `/etc/fstab` and add simmilar entry as to `/home` or `/var` but for
+    our `/.snapshots` (pay close attention to subvolume ID !)
+    * Mount with `mount -a`
 
+If no errors arise, the subvolume `@snapshots` has been mounted correctly.
+
+* Unmount `umount /mnt/btrfs`
+* Remove temporary directory `rmdir /mnt/btrfs`
+
+This way, the `@snapshots` volume will be located on separate subvolume, and
+thus will allow for rollingback `/` subvolume through arch live iso.
+
+To configure automatic snapshots (recommended) edit the
+`/etc/snapper/configs/config` file. Then change intervals and number of saved
+snapshots to your liking, recommended values are:
+```
+TIMELINE_MIN_AGE="1800"
+TIMELINE_LIMIT_HOURLY="5"
+TIMELINE_LIMIT_DAILY="7"
+TIMELINE_LIMIT_WEEKLY="0"
+TIMELINE_LIMIT_MONTHLY="0"
+TIMELINE_LIMIT_YEARLY="0"
+```
+After that's done, activate services with
+```
+systemctl enable --now snapper-timeline.timer snapper-cleanup.timer
+```
+If you wish to change default intervals for snapshots and cleanups - edit those
+services manually
+
+### How to rollback
+As we configured snapper and btrfs subvolumes to allow for `/` rollback, it
+could be useful to know how to do that.
+
+* Boot from arch live iso
+* Open encrypted partition `cryptsetup luksOpen <device> <name>`
+* Mount `mount /dev/mapper/luksloop /mnt`
+* `cd /mnt`
+* Search through `@snapshots` to find the snapshot you want to rollback to.
+* Either move or remove `@` subvolume
+    `btrfs subvolume delete @`
+* Copy chosen snapshot to replace `@` - `#` denotes the chosen snapshot number
+    `btrfs subvolume snapshot /mnt/@snapshots/#/snapshot /mnt/@`
+* You should be good to go, reboot.
 
 ## Enable ZRAM
 * First install package `zramd` from AUR (or use a helper)
@@ -273,8 +330,8 @@ After successful instalation, you might want to back up the disk with clonezilla
 
 ## Configure AppArmor
 Every official arch linux kernel comes with AppArmor support included - it has
-been chosen over SELinux - thats opposing to RHEL/Fedora. SELinux attaches
-labels which makes it flexible but takes a lot of effort to get it installed and
+been chosen over SELinux - in contrast to RHEL/Fedora. SELinux attaches labels
+which makes it flexible but takes a lot of effort to get it installed and
 configured correctly.
 
 * AppArmor is available but disabled by default - to check it's status we can:
@@ -292,22 +349,31 @@ Now if there isn't `apparmor` within the output - then AA is disabled.
 
 If you want to make your own profiles - check `Audit Framework`, it's required.
 
+<!--
 ## Configure Duplicati - TODO
 Duplicati is free and opensource solution for backups
 
 * Install `duplicati-latest` from AUR
 
-## Install Firejail - TODO
+## Install Firejail - TODO 
+## Install ClamAV - TODO
+-->
 
 ## Configure HDD standby timeout
-### hdparm
-If your machine has mechanical hard drives that house data partitions which you
+If your machine has mechanical hard drives which house data partitions that you
 do not use a lot and thus generates noise - it is possible to configure timeout
 after which HDDs will be put to standby, saving power and making the machine
 less noisy.
+
+### hdparm
 * Install `hdparm` package - `pacman -S hdparm`
 * Locate the drive you want to modify with `lsblk`
 * Check it's current settings with `hdparm -I /dev/sdX`
+* Check if your drives support putting to standby this way by polling with
+`hdparm -B /dev/sdX` and `hdparm -S /dev/sdX`
+
+If those commands return errors, or do not show values at all, it might mean
+that the drive you try to control will ignore your requests.
 
 At this point we have basically three values to work with, one is about power
 management - APM(Advanced Power Management), second one is just plain spindown
@@ -315,7 +381,7 @@ time - after this time drive will spindown, and third is not always available to
 all drives - Automatic Acoustic Management, modern drives have an option to slow
 down their head movements to generate less noise.
 
-APM (denoted by -B parameteris between 1 and 255 (lower means more aggresive
+APM (denoted by -B parameter is between 1 and 255 (lower means more aggresive
 power conservation), while SD (denoted by -S parameter) is between 1 and 251.
 From 1 to 240 it multiplies the number by 5s over that and it counts as a
 multitude od 30min.
@@ -335,3 +401,6 @@ use `hd-idle` package.
 * Edit `/etc/conf.d/hd-idle` and add line
     `HD_IDLE_OPTS="-i 0 -a /dev/sda -i 60 -a /dev/sdb -i 60"`  
 This ensures that hard drives sda and sdb will spindown after 1 minute of idling
+
+# Closing notes
+* ZRAM has proven itself to not be necessary, since I've allocated enough space on fast NVME M.2 storage. Additional swap in a form of ZRAM doesn't seem useful.
