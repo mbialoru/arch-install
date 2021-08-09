@@ -24,7 +24,7 @@ echo "127.0.1.1 arch.localdomain arch" >> /etc/hosts
 echo root:password | chpasswd
 
 # Install packages
-pacman -S grub grub-btrfs efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call tlp virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font
+pacman -S grub grub-btrfs efibootmgr networkmanager network-manager-applet dialog wpa_supplicant mtools dosfstools base-devel linux-headers avahi xdg-user-dirs xdg-utils gvfs gvfs-smb nfs-utils inetutils dnsutils bluez bluez-utils cups hplip alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack bash-completion openssh rsync reflector acpi acpi_call tlp virt-manager qemu qemu-arch-extra edk2-ovmf bridge-utils dnsmasq vde2 openbsd-netcat iptables-nft ipset firewalld flatpak sof-firmware nss-mdns acpid os-prober ntfs-3g terminus-font mc screen tmux wget
 
 # Appropriate video drivers
 # pacman -S --noconfirm mesa
@@ -33,7 +33,7 @@ pacman -S grub grub-btrfs efibootmgr networkmanager network-manager-applet dialo
 pacman -S --noconfirm nvidia nvidia-utils nvidia-settings
 
 # Install and configure GRUB (Watch out for os-probber if dualbooting)
-grub-install --target=i386-pc --recheck /dev/sdX    # Replace with boot drive
+grub-install --target=i386-pc --recheck /dev/sdX
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Enable services

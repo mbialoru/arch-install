@@ -1,5 +1,5 @@
-# Features
-EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipeline, Wayland.
+# Summary
+EFI, BTRFS, LUKS, Swap partition + ZRAM, Pipewire, Wayland.
 
 # Warning
 Before proceeding, read the whole thing just to be sure that you caught any problems that might prop-up durring instalation
